@@ -1,23 +1,4 @@
 //编译：riscv64-unknown-linux-gnu-g++ -march=rv64gcv_zvfh -O2 -c flash_attention_fp16.cpp -o flash_attention_fp16.o
-//
-// 与 flash_attention.cpp 一一对应的 fp16 原生版：
-//   matmul_rvv          → matmul_rvv_f16
-//   rvv_exp             → rvv_exp_f16
-//   online_softmax_rvv  → online_softmax_f16
-//   flash_attention_rvv → flash_attention_fp16_rvv
-// 结构、分块逻辑、注释位置全部照搬，便于两份代码逐行对照（本文件无 main、无计时）。
-//
-// 关键差别（为什么是“原生 fp16”而不是“fp16 存储 + fp32 计算”）：
-//   S = Q·Kᵀ、S*scale、O*=alpha、O += P·V、O/sum 全部走 SEW=16 的 fp16 向量指令，
-//   一条指令吃 8 个元素（VLEN=256、DLEN=128），而 fp32 只有 4 个。
-//   分块随之从 32 提到 64：VLEN=256 时 f16m4 = 4×256/16 = 64 个元素，刚好填满一个向量组。
-//
-// 仍然留在 fp32 的两处（都是行级标量，每行只算一次，不影响元素吞吐）：
-//   1. online_max / online_sum —— 跨 tile 累积的运行量，放 fp16 会随 tile 数漂移；
-//   2. 行内求和用加宽归约（加数位宽仍是 fp16，累加在 fp32 做），理由同上。
-//
-// 注意：需要 Zvfh（原生 fp16 向量算术）。只有 Zfh 的话下面所有 f16 向量指令都编不过。
-
 
 #include<riscv_vector.h>
 #include<iostream>

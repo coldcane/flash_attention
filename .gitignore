@@ -1,6 +1,0 @@
-# 构建产物（不入库，本地保留）
-*.o
-*.riscv
-test_flash
-test_flash2
-*.log
